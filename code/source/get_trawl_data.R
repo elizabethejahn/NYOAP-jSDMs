@@ -21,6 +21,8 @@ get_trawl_data = function(conn = NULL, update = FALSE){
   bioTab <- sqlFetch(conn, 'Biological Samples') %>% 
     # make all names lowercase
     rename_with(tolower) %>% 
+    # filter out Striped Bass Surveys
+    dplyr::filter(cno != "2017001") %>% 
     mutate(towDate = as.Date(towdate, format = "%Y-%m-%d")) %>% 
     select(cno, towDate, station, spn, tlength, flength, weight) %>% 
     # filter out 'Rod & Reel'
@@ -29,8 +31,22 @@ get_trawl_data = function(conn = NULL, update = FALSE){
   towTab <- sqlFetch(conn, 'Tow') %>% 
     #make all lowercase
     rename_with(tolower) %>% 
+    # filter out Striped Bass Surveys
+    dplyr::filter(cno != "2017001") %>% 
     dplyr::mutate(towDate = as.Date(towdate, format = "%Y-%m-%d")) %>% 
     dplyr::select(cno, towDate, station, towID = tow, latds, latms, londs, lonms, latde, latme, londe, lonme) 
+  
+  
+  # read in cleaned tow data
+  towFile = readxl::read_xlsx(here('ignore/Annual Tow Information.xlsx')) %>% 
+    dplyr::rename_with(tolower) %>% 
+    dplyr::select(cno = 'cruise #', station = 'station #', towID = 'tow #', towDate = 'date',
+                  duration = 'tow duration (min)', latStart_dd = 'start lat dd', lonStart_dd = 'start long dd',
+                  latEnd_dd = 'end lat dd', lonEnd_dd = 'end long dd', temp_c = 'water temp (°c)',
+                  sal_psu = 'salinity (psu)', do_mgL = 'do (mg/l)', ph) %>% 
+    rowwise %>% 
+    dplyr::mutate(trawlDist_tow = geosphere::distm(c(lonStart_dd,latStart_dd), c(lonEnd_dd, latEnd_dd), fun = distHaversine)[,1])
+  
   
   #data checks for bad coords
   # if()
@@ -49,9 +65,9 @@ get_trawl_data = function(conn = NULL, update = FALSE){
       lonme > 60 ~ TRUE,
     .default = FALSE)) %>% 
     dplyr::mutate(latStart_dd_tow = latds+(latms/60),
-           lonStart_dd_tow = londs+(lonms/60),
+           lonStart_dd_tow = londs-(lonms/60),
            latEnd_dd_tow = latde+(latme/60),
-           lonEnd_dd_tow = londe+(lonme/60)) %>% 
+           lonEnd_dd_tow = londe-(lonme/60)) %>% 
     rowwise %>% 
     dplyr::mutate(trawlDist_tow = geosphere::distm(c(lonStart_dd_tow,latStart_dd_tow), c(lonEnd_dd_tow, latEnd_dd_tow), fun = distHaversine)[,1])
   
@@ -74,6 +90,8 @@ get_trawl_data = function(conn = NULL, update = FALSE){
                   sal_psu = 'salinity (psu)',
                   do_mgL = 'do (mg/l)',
                   ph) %>% 
+    # filter out Striped Bass Surveys
+    dplyr::filter(cno != "2017001") %>% 
     dplyr::mutate(towTime = as.character(towTime)) %>% 
     dplyr::mutate(towDate = as.Date(towDate, format = '%Y-%m-%d'),
                   towTime = gsub("\\d{4}-\\d{2}-\\d{2}\\s(\\d{2}:\\d{2}:\\d{2}$)","\\1",towTime),
@@ -83,6 +101,10 @@ get_trawl_data = function(conn = NULL, update = FALSE){
     dplyr::mutate(trawlDist_ctd = geosphere::distm(c(lonStart_dd_ctd,latStart_dd_ctd), c(lonEnd_dd_ctd, latEnd_dd_ctd), fun = distHaversine)[,1])
   
   ## tow and ctd merge test
+  towEnvFile = merge(towFile, ctdTab, by = c('cno','station','towID','towDate','duration', 
+                                             'temp_c','sal_psu','do_mgL', 'ph'), all = TRUE)
+  
+  
   towEnvTab = merge(towTab, ctdTab, by = c('cno','station','towID','towDate'), all = TRUE) %>% 
     dplyr::mutate(dist_agree = case_when(round(trawlDist_tow,4) == round(trawlDist_ctd,4) ~TRUE,
                                         .default = FALSE),

@@ -175,7 +175,7 @@ bioTowStart = vect(bioTowMeta, geom = c('lonStart_dd','latStart_dd'))
 bioTowEnd = vect(bioTowMeta, geom = c('lonEnd_dd','latEnd_dd'))
 bioTowMeta$startDepth_m = unlist(terra::extract(bathRast, y = bioTowStart)['elevation'])
 bioTowMeta$endDepth_m = unlist(terra::extract(bathRast, y = bioTowEnd)['elevation'])
-rm(bioTowStart);rm(bioTowEnd)
+# rm(bioTowStart);rm(bioTowEnd)
 
 bioTowMeta = bioTowMeta %>% 
   select(id,towmonth, station, towID, lonStart_dd, latStart_dd, lonEnd_dd, latEnd_dd, startDepth_m, endDepth_m) %>% 
@@ -191,6 +191,7 @@ ggplot()+
                      fill = 'grey')+
   annotate(geom = 'rect', xmin = NYSbbox[1], xmax = NYSbbox[2],
                     ymin = NYSbbox[3], ymax = NYSbbox[4], fill = NA, color = 'black')+
+  
   coord_sf(crs = 4326,
            xlim = c(NYSbbox[1],NYSbbox[2]),
            ylim = c(NYSbbox[3], NYSbbox[4]))+
@@ -199,6 +200,44 @@ ggplot()+
   labs(title = "NYS study region", x = 'Longitude', y = 'Latitude')+
   theme(legend.position = 'none')
 ```
+
+```{r id-errant-trawls}
+
+# create a polygon to select errant 
+coord_matrix = matrix(c(-72.1, 41.11,
+                      -72.1, 41.05,
+                      -72.05, 41.05,
+                      -72.05, 41.11), ncol = 2, byrow = TRUE)
+errant_poly = terra::vect(coord_matrix, type = 'polygons', crs = "EPSG:4326")
+ggplot()+
+  geom_raster(data = bathDf, aes(x = x, y = y,
+                                 fill = ifelse(.data[[bathVars]] > threshold, NA,
+                                               .data[[bathVars]])), alpha = 1) +
+  annotation_borders('world',
+                     xlim = c(NYSbbox[1],NYSbbox[2]),
+                     ylim = c(NYSbbox[3], NYSbbox[4]),
+                     fill = 'grey')+
+  annotate(geom = 'rect', xmin = NYSbbox[1], xmax = NYSbbox[2],
+                    ymin = NYSbbox[3], ymax = NYSbbox[4], fill = NA, color = 'black')+
+  geom_sf(data = sf::st_as_sf(errant_poly))+
+  coord_sf(crs = 4326,
+           xlim = c(NYSbbox[1],NYSbbox[2]),
+           ylim = c(NYSbbox[3], NYSbbox[4]))+
+  # geom_point(data = bioTowTab, aes(x = lonStart_dd, latStart_dd))+
+  geom_segment(data = bioTowMeta, aes(x = lonStart_dd, y = latStart_dd, xend = lonEnd_dd, yend = latEnd_dd, group = id))+
+  labs(title = "NYS study region", x = 'Longitude', y = 'Latitude')+
+  theme(legend.position = 'none')
+
+# identify which are within the errant polygon
+trawls_intersect = terra::extract(errant_poly, bioTowStart)
+
+errant_vec = sum(!is.na(trawls_intersect[,"id.x"]))
+
+errant_trawls = bioTowMeta[errant_vec,]
+
+```
+
+
 
 For each of these sampling dates we can extract the environmental data from the collected during the sampling.
 
