@@ -1,11 +1,10 @@
 ---
-output: github_document
-# bibliography: docs/refs.bib
+title: "Overview"
+format: html
 ---
-<!-- README.md is generated from README.Rmd. Please edit that file -->
 
 ```{r setup, include = FALSE}
-here::i_am("README.Rmd")
+here::i_am("overview.qmd")
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",

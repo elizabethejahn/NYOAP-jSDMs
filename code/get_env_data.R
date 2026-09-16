@@ -15,5 +15,11 @@ get_trawl_data(type = NULL){
     
     
   }
+  
+  if(type == ''){
+    
+  }
+  
+  
 
 }

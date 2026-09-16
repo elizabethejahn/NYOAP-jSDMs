@@ -1,0 +1,10 @@
+---
+title: "NYS trawl survey"
+image: profile.jpg
+about:
+  template: jolla
+---
+
+This project organizes the NYS trawl survey biological data for project, *Defining foraging hotspots of finfish and sharks in the New York Bight: Linking trophic dynamics with spatiotemporal trends in species distributions*. 
+
+This pipeline is used to summarise data of trawl species data, pull environmental forecasts and backcasts of regional environmental variables, fit species and community models of the biological community, and forecast species biomasses/abundance to predict future sampling. The general structure of the pipeline is found in "Overview" page.
