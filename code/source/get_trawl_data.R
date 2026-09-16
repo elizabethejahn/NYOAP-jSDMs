@@ -28,6 +28,17 @@ get_trawl_data = function(conn = NULL, update = FALSE){
     # filter out 'Rod & Reel'
     dplyr::filter(station != 'Rod & Reel')
   
+  catchTab <- sqlFetch(conn, 'WEIGHT') %>%
+    # make all names lowercase
+    rename_with(tolower) %>%
+    # select relevant columns
+    dplyr::select(cno, station, spn, seq, wtype, subweight, disweight, tweight) %>%
+    dplyr::summarise(totWeight = sum(subweight, disweight, na.rm = TRUE), .by = c(cno, station, spn,tweight)) %>% 
+    dplyr::mutate(biomass_kg = case_when(is.na(tweight) | tweight == 0 ~ totWeight,
+                                         totWeight == 0 ~ tweight,
+                                         .default = tweight)) %>% 
+    dplyr::select(cno, station, spn, biomass_kg)
+  
   towTab <- sqlFetch(conn, 'Tow') %>% 
     #make all lowercase
     rename_with(tolower) %>% 
@@ -44,8 +55,12 @@ get_trawl_data = function(conn = NULL, update = FALSE){
                   duration = 'tow duration (min)', latStart_dd = 'start lat dd', lonStart_dd = 'start long dd',
                   latEnd_dd = 'end lat dd', lonEnd_dd = 'end long dd', temp_c = 'water temp (°c)',
                   sal_psu = 'salinity (psu)', do_mgL = 'do (mg/l)', ph) %>% 
+    dplyr::mutate(cno = as.numeric(gsub("[[:punct:]]","",cno)),
+                  towDate = as.Date(towDate)) %>%
+    dplyr::mutate(across(where(is.character), trimws)) %>% 
     rowwise %>% 
-    dplyr::mutate(trawlDist_tow = geosphere::distm(c(lonStart_dd,latStart_dd), c(lonEnd_dd, latEnd_dd), fun = distHaversine)[,1])
+    dplyr::mutate(trawlDist_tow = geosphere::distm(c(lonStart_dd,latStart_dd), c(lonEnd_dd, latEnd_dd), fun = distHaversine)[,1]) %>% 
+    ungroup
   
   
   #data checks for bad coords
@@ -101,8 +116,15 @@ get_trawl_data = function(conn = NULL, update = FALSE){
     dplyr::mutate(trawlDist_ctd = geosphere::distm(c(lonStart_dd_ctd,latStart_dd_ctd), c(lonEnd_dd_ctd, latEnd_dd_ctd), fun = distHaversine)[,1])
   
   ## tow and ctd merge test
-  towEnvFile = merge(towFile, ctdTab, by = c('cno','station','towID','towDate','duration', 
-                                             'temp_c','sal_psu','do_mgL', 'ph'), all = TRUE)
+  towEnvFile = merge(towFile, ctdTab, by = c('cno','station','towID','towDate','duration'), all = TRUE) %>% 
+    dplyr::mutate(dist_agree = case_when(round(trawlDist_tow,3) == round(trawlDist_ctd,3) ~TRUE,
+                                         .default = FALSE))#,
+                  # coords_agree = case_when(latStart_dd_tow == latStart_dd_ctd &
+                  #                            lonStart_dd_tow == lonStart_dd_ctd &
+                  #                            latEnd_dd_tow == latEnd_dd_ctd &
+                  #                            lonEnd_dd_tow == lonEnd_dd_ctd ~ TRUE,
+                  #                          .default = FALSE))
+                                             # 'temp_c','sal_psu','do_mgL', 'ph'), all = TRUE)
   
   
   towEnvTab = merge(towTab, ctdTab, by = c('cno','station','towID','towDate'), all = TRUE) %>% 

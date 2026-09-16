@@ -207,7 +207,7 @@ polys = vect(here('data/NewStrataFromMark.shp'))
 polys_p = project(polys, "epsg:4326")
 polys_r = rasterize()
 
-polys_p$
+# polys_p$
 ggplot()+
   geom_raster(data = bathDf, aes(x = x, y = y,
                                  fill = ifelse(.data[[bathVars]] > threshold, NA,
