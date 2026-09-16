@@ -1,0 +1,64 @@
+---
+title: "trawl-environment"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 4
+---
+
+<link rel="stylesheet" type="text/css" href="http://cdn.datatables.net/1.10.5/css/jquery.dataTables.min.css">
+<script src="http://code.jquery.com/jquery-2.1.2.min.js"></script>
+<script src="http://cdn.datatables.net/1.10.5/js/jquery.dataTables.min.js"></script>
+
+<script type="text/javascript">
+         $(document).ready(function() {
+             $(".dtable").DataTable();
+         } );
+</script>
+
+
+```{r init, echo = FALSE, warning=FALSE, message=FALSE}
+here::i_am('docs/community-analysis.Rmd')
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE,
+  echo = FALSE
+)
+
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message= FALSE)
+
+# Define a custom knitr hook for collapsing output
+knitr::knit_hooks$set(fig_collapse=function(before, options, envir) {
+  if (before) {
+    # Opening HTML tags for the collapsible container
+    paste('<details><summary>Click to view figures</summary><div>')
+  } else {
+    # Closing HTML tags
+    paste('</div></details>')
+  }
+})
+## load the libraries needed
+library(here)
+library(junkR)
+library(RODBC)
+library(magrittr)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(rstan)
+library(purrr)
+library(viridis)
+update_data = FALSE
+theme_set(theme_minimal())
+# source the code to initiate the 
+conn <<- odbcConnectAccess2007(here("ignore/Nearshore Survey.accdb"))
+
+# source all the functions to read, clean, and update data products
+purrr::walk(list.files(here::here('code/source'), pattern = ".*.R", full.names = TRUE), function(x) source(x))
+```
+
+Introduction
+------
+
